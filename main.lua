@@ -16,7 +16,7 @@ end
 Game = {}
 
 function love.load()
-  Game.map = STI('map01.lua')
+  Game.map = STI('iso_16x16.lua')
 end
 
 function love.update(dt)
@@ -24,9 +24,8 @@ function love.update(dt)
 end
 
 function love.draw()
-  Game.map:draw(0,0,2,2)
-
-  love.graphics.replaceTransform(love.math.newTransform(0,0,0,2,2))
+  Game.map:draw(0,0,3,3)
+  love.graphics.replaceTransform(love.math.newTransform(0,0,0,3,3))
 end
 
 function love.keypressed( key, scancode, isrepeat )
