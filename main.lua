@@ -32,9 +32,9 @@ function love.update(dt)
 end
 
 function love.draw()
-  love.graphics.clear(0.1,0.1,0.1,1)
-  Game.map:draw(40,0,3,3)
-  love.graphics.replaceTransform(love.math.newTransform(40,0,0,3,3))
+  love.graphics.clear(0.1,0.1,0.3,1)
+  Game.map:draw(200,0,2,2)
+  love.graphics.replaceTransform(love.math.newTransform(200,0,0,2,2))
 
   -- DEBUG DRAWING
   local transform = love.math.newTransform(0,0,math.pi/4,200,200)

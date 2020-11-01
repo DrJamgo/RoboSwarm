@@ -12,6 +12,10 @@ function HeightMap:update(dt)
     self:refresh()
 end
 
+function HeightMap:getDimensions()
+    return self.volume:getWidth(), self.volume:getHeight(), self.volume:getDepth()
+end
+
 function HeightMap:refresh()
     local map = self.map
 

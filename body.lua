@@ -25,26 +25,49 @@ local vertices = {
     {1,1,0},
 }
 
+local NUM_BODIES = 10
+
 function Body:initialize(heightmap)
     self.heightmap = heightmap
     self.bodies = {}
-    self:addBody(3,6,1,1.5)
-    self:addBody(6,6,1,2.5)
-    self:addBody(9,9,1,3.5)
+    --
+    --    | r | g | b | a |
+    --    |---|---|---|---|
+    --  0 | x | y | z | 1 |
+    --
+    self.bodiestex = love.graphics.newCanvas(NUM_BODIES, 1)
+    self.bodiestex:setFilter('nearest', 'nearest')
+    self:addBody(3,6,1,2)
+    self:addBody(6,6,1,2)
+    self:addBody(9,6,1,3)
     self.mesh = love.graphics.newMesh({{'VertexPosition', 'float', 3}}, vertices, 'fan')
 end
 
+function Body:_indexToUV(i)
+    return (0.5 + i) * (1 / NUM_BODIES), 0.5
+end
+
 function Body:addBody(x,y,z,r)
-    table.insert(self.bodies, {x,y,z,r})
+    local wx,wy,wz = self.heightmap:getDimensions()
+    local i = #self.bodies
+    local u,v = self:_indexToUV(#self.bodies)
+    self.bodiestex:renderTo(function()
+        love.graphics.setColor(x/wx,y/wy,z/wz, 1)
+        love.graphics.points(i,0.5)
+    end)
+    table.insert(self.bodies, {u})
 end
 
 local vertexcode = [[
-    attribute vec4 Body;
+    attribute float Index;
     uniform float uZ;
     varying vec3 vTexCoord;
+    uniform Image bodiestex;
+    uniform vec3 worldscale;
 
     vec4 position( mat4 transform_projection, vec4 vertex_position )
     {
+        vec4 Body = vec4(Texel(bodiestex, vec2(Index,0)).xyz * worldscale, 2.5);
         vec3 pos = (vec3(vertex_position.xy, uZ) * Body.w) + vec3(Body.xy, Body.z);
         vTexCoord = vec3(vertex_position.xy / 2.1, (uZ-Body.z)/(Body.w*0.9)) + vec3(0.5,0.5,0.5);
         return transform_projection * vec4(pos, 1);
@@ -69,24 +92,43 @@ shader:send('volumetex', volumeimage)
 function Body:update(dt)
     love.graphics.replaceTransform(love.math.newTransform())
 
-    local bodiesMesh = love.graphics.newMesh({{"Body", "float", 4}}, self.bodies, nil, "static")
-    self.mesh:attachAttribute('Body', bodiesMesh, 'perinstance')
+    local bodiesMesh = love.graphics.newMesh({{"Index", "float", 1}}, self.bodies, nil, "static")
+    self.mesh:attachAttribute('Index', bodiesMesh, 'perinstance')
 
+    --
+    -- VOLUME STAGE
+    --
     local volume = self.heightmap.volume
     local depth = volume:getDepth()
     love.graphics.setShader(shader)
     love.graphics.setColor(1,1,1,1)
+    shader:send('worldscale', {self.heightmap:getDimensions()})
+    shader:send('bodiestex', self.bodiestex)
     for i = 1, depth, 1 do
         shader:send('uZ', i-1)
         love.graphics.setCanvas(volume, i)
         love.graphics.drawInstanced(self.mesh, #self.bodies)
     end
+
+    --
+    -- UPDATE STAGE
+    --
+
+
+
+    --
+    -- RESET
+    --
     love.graphics.setColor(1,1,1,1)
     love.graphics.setShader()
     love.graphics.setCanvas()
 end
 
 function Body:draw()
-    self:renderVolume(volumeimage, 1, 1)
+    love.graphics.push()
+    love.graphics.replaceTransform(love.math.newTransform())
+    love.graphics.draw(self.bodiestex,0,0,0,10,10)
+    love.graphics.pop()
+    --self:renderVolume(volumeimage, 1, 1)
 end
 
