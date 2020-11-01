@@ -37,10 +37,16 @@ function Body:initialize(heightmap)
     --
     self.bodiestex = love.graphics.newCanvas(NUM_BODIES, 1)
     self.bodiestex:setFilter('nearest', 'nearest')
-    self:addBody(3,5,3,2)
-    self:addBody(6,6,4,2)
-    self:addBody(9,6,2,3)
     self.mesh = love.graphics.newMesh({{'VertexPosition', 'float', 3}}, vertices, 'fan')
+    local wx,wy,wz = self.heightmap:getDimensions()
+    self.dynamic = love.graphics.newCanvas(wx,wy,wz, {type='volume'})
+
+    self:addBody(3,5,3,2)
+    self:addBody(6,6,3,2)
+    self:addBody(9,6,3,3)
+    self:addBody(3,7,3,2)
+    self:addBody(6,8,3,2)
+    self:addBody(9,9,3,3)
 end
 
 function Body:_indexToUV(i)
@@ -67,7 +73,7 @@ local vertexcode = [[
 
     vec4 position( mat4 transform_projection, vec4 vertex_position )
     {
-        vec4 Body = vec4(Texel(bodiestex, vec2(Index,0)).xyz * worldscale, 2.5);
+        vec4 Body = vec4(Texel(bodiestex, vec2(Index,0)).xyz * worldscale, 2);
         vec3 pos = (vec3(vertex_position.xy, uZ) * Body.w) + vec3(Body.xy, Body.z);
         vTexCoord = vec3(vertex_position.xy / 2.1, (uZ-Body.z)/(Body.w*0.9)) + vec3(0.5,0.5,0.5);
         return transform_projection * vec4(pos, 1);
@@ -99,8 +105,10 @@ local updatevertexcode = [[
 
 local updatepixelcode = [[
     uniform float dt;
-    uniform VolumeImage volume;
+    uniform VolumeImage staticVolume;
+    uniform VolumeImage dynamicVolume;
     uniform vec3 worldscale;
+    uniform vec4 cursor;
 
     vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords )
     {
@@ -112,16 +120,19 @@ local updatepixelcode = [[
                 for(int x = -1; x <= 1; x+=1) {
                     vec3 diff = vec3(x,y,z);
                     vec3 uvw = Body.xyz + diff / worldscale;
-                    float d = Texel(volume, uvw).a;
-                    vector += diff * d / count;
+                    float s = Texel(staticVolume, uvw).a;
+                    float d = Texel(dynamicVolume, uvw).a;
+                    vector += diff * (2*s+d) / count;
                     count++;
                 }
             }
         }
-
-        Body.xyz = Body.xyz - vector * dt;
-        Body.z = Body.z - dt * 0.2;
-        Body.x = Body.x + dt * 0.1;
+        float c = 0.5;
+        vec3 target = cursor.xyz;
+        vec3 diff = clamp(target - Body.xyz, vec3(-c,-c,-c), vec3(c,c,c));
+        Body.xyz += cursor.a * diff * dt;
+        Body.xyz += - vector * dt * 5;
+        Body.z = Body.z - dt * 1 / worldscale.z;
         return Body;
     }
 ]]
@@ -137,15 +148,15 @@ function Body:update(dt)
     --
     -- VOLUME STAGE
     --
-    local volume = self.heightmap.volume
-    local depth = volume:getDepth()
+    local depth = self.dynamic:getDepth()
     love.graphics.setShader(volumeshader)
     love.graphics.setColor(1,1,1,1)
     volumeshader:send('worldscale', {self.heightmap:getDimensions()})
     volumeshader:send('bodiestex', self.bodiestex)
     for i = 1, depth, 1 do
         volumeshader:send('uZ', i-1)
-        love.graphics.setCanvas(volume, i)
+        love.graphics.setCanvas(self.dynamic, i)
+        love.graphics.clear(0,0,0,0)
         love.graphics.drawInstanced(self.mesh, #self.bodies)
     end
 
@@ -158,7 +169,9 @@ function Body:update(dt)
     love.graphics.setShader(updateshader)
     updateshader:send('dt', dt)
     updateshader:send('worldscale', {self.heightmap:getDimensions()})
-    updateshader:send('volume', volume)
+    updateshader:send('staticVolume', self.heightmap.volume)
+    updateshader:send('dynamicVolume', self.dynamic)
+    updateshader:send('cursor', Game.cursor and {Game.cursor[1], Game.cursor[2],2/self.dynamic:getDepth(),1} or {0,0,0,0})
     love.graphics.draw(self.bodiestex)
 
     self.bodiestex = newBodiesTex
@@ -176,6 +189,6 @@ function Body:draw()
     love.graphics.replaceTransform(love.math.newTransform())
     love.graphics.draw(self.bodiestex,0,0,0,10,10)
     love.graphics.pop()
-    --self:renderVolume(volumeimage, 1, 1)
+    self:renderVolume(self.dynamic)
 end
 

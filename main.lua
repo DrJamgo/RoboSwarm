@@ -43,7 +43,10 @@ function love.draw()
   time = love.timer.getTime()
   local a = 0.1
   fps = (1-a) * fps + a * (1/diff)
-  love.graphics.print(string.format('%.1f', fps), love.graphics.getWidth() - 50)
+  love.graphics.printf(string.format('FPS: %.1f', fps), love.graphics.getWidth() - 100, 0, 100, 'right')
+  if Game.cursor then
+    love.graphics.printf(string.format('Cursor: %.2f.%.2f', unpack(Game.cursor)), love.graphics.getWidth() - 100, 50, 100, 'right')
+  end
 
   -- DEBUG DRAWING
   local transform = love.math.newTransform(0,0,math.pi/4,200,200)
@@ -55,6 +58,10 @@ function love.draw()
   matrix[7] = -100
   transform:setMatrix(unpack(matrix))
   love.graphics.replaceTransform(transform)
+  Game.cursor = nil
+  if love.mouse.isDown(1) then
+    Game.cursor = {transform:inverseTransformPoint(love.mouse.getPosition())}
+  end
 
   Game.heightmap:draw()
   Game.body:draw()

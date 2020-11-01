@@ -9,7 +9,7 @@ function HeightMap:initialize(map)
 end
 
 function HeightMap:update(dt)
-    self:refresh()
+    --self:refresh()
 end
 
 function HeightMap:getDimensions()
