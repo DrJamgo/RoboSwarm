@@ -17,7 +17,9 @@ require 'volumerender'
 require 'heightmap'
 require 'body'
 
-Game = {}
+Game = {
+  time = 0
+}
 
 function love.load()
   Game.map = STI('iso_16x16.lua')
@@ -26,6 +28,7 @@ function love.load()
 end
 
 function love.update(dt)
+  Game.time = love.timer.getTime()
   Game.map:update(dt)
   Game.heightmap:update(dt)
   Game.body:update(dt)
@@ -40,6 +43,8 @@ function love.draw()
   love.graphics.replaceTransform(love.math.newTransform(400,0,0,2,2))
 
   Game.body:draw()
+
+  love.graphics.replaceTransform(love.math.newTransform())
 
   local diff = love.timer.getTime() - time
   time = love.timer.getTime()

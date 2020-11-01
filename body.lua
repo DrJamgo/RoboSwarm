@@ -26,7 +26,7 @@ local vertices = {
     {1,1,0},
 }
 
-local NUM_BODIES = 100
+local NUM_BODIES = 10
 local BODIES_TEX_FORMAT = 'rgba16f'
 
 function Body:initialize(map, heightmap)
@@ -74,7 +74,7 @@ local vertexcode = [[
 
     vec4 position( mat4 transform_projection, vec4 vertex_position )
     {
-        vec4 Body = vec4(Texel(bodiestex, vec2(Index,0)).xyz * worldscale, 2);
+        vec4 Body = vec4(Texel(bodiestex, vec2(Index,0)).xyz * worldscale, 1.5);
         vec3 pos = (vec3(vertex_position.xy, uZ) * Body.w) + vec3(Body.xy, Body.z);
         vTexCoord = vec3(vertex_position.xy / 2.1, (uZ-Body.z)/(Body.w*0.9)) + vec3(0.5,0.5,0.5);
         return transform_projection * vec4(pos, 1);
@@ -116,24 +116,33 @@ local updatepixelcode = [[
         vec4 Body = Texel(tex, texture_coords);
         vec3 vector = vec3(0,0,0);
         int count = 3*3*3-1;
+        float R = 0.5;
         for(int z = -1; z <= 1; z+=1) {
             for(int y = -1; y <= 1; y+=1) {
                 for(int x = -1; x <= 1; x+=1) {
                     if(x != 0 && y != 0 && z != 0) {
-                        vec3 diff = vec3(x,y,z) * 0.5;
+                        vec3 diff = vec3(x,y,z) * R;
                         vec3 uvw = Body.xyz + diff / worldscale;
                         float s = Texel(staticVolume, uvw).a;
                         float d = Texel(dynamicVolume, uvw).a;
-                        vector += diff * (s+d) / count;
+                        vector += diff * (s*2+d) / count / (length(diff) / R);
                     }
                 }
             }
         }
-        float c = 0.5;
+
+        // adjust z factor
+        vector.z *= 2;
+
+
+        float c = 0.2;
         vec3 target = cursor.xyz;
         vec3 diff = target - Body.xyz;
-        Body.xyz += clamp(cursor.a * diff , vec3(-c,-c,-c), vec3(c,c,c)) * dt;
-        Body.xyz += - vector * dt * 50;
+        float f = dot(diff, -vector);
+        if(f > -0.1) {
+            Body.xyz += clamp(cursor.a * diff , vec3(-c,-c,-c), vec3(c,c,c)) * dt;
+        }
+        Body.xyz += - vector * dt * 100;
         Body.z = Body.z - dt * 5 / worldscale.z;
         Body.xyz = clamp(Body.xyz, vec3(0,0,0), vec3(1,1,1));
         return Body;
@@ -196,6 +205,12 @@ function Body:drawDebug()
     self:renderVolume(volumeimage,1,1)
 end
 
+local image = love.graphics.newImage('iso_16x24.png')
+image:setFilter('nearest','nearest')
+local quads = {
+    love.graphics.newQuad(112,0,16,24, image:getDimensions()),
+    love.graphics.newQuad(112,24,16,24, image:getDimensions()),
+}
 function Body:draw()
     local data = self.bodiestex:newImageData(0,1,0,0,self.bodiestex:getDimensions())
 
@@ -203,8 +218,10 @@ function Body:draw()
         local x,y,z = data:getPixel(i,0)
         local wx,wy,wz = self.heightmap:getDimensions()
         local X, Y = self.map:convertTileToPixel(x*wx, y*wy)
-        love.graphics.circle('line', X, Y-z*16, 5)
-        love.graphics.line(X,Y,X, Y-z*16)
+        local frame = math.floor((i/0.1 + Game.time * 10) % 2) +1
+        love.graphics.draw(image, quads[frame], X, Y-z*16, 0, 1, 1, 8,16)
+        --love.graphics.circle('line', X, Y-z*16, 5)
+        --love.graphics.line(X,Y,X, Y-z*16)
     end
 end
 
