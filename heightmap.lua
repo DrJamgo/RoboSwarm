@@ -20,7 +20,7 @@ function HeightMap:refresh()
     local map = self.map
 
     self.volume = self.volume or love.graphics.newCanvas(map.width, map.height, 8, {type='volume'})
-    self.volume:setFilter('nearest', 'nearest')
+    --self.volume:setFilter('nearest', 'nearest')
     
     love.graphics.replaceTransform(love.math.newTransform())
     local maxz = 0

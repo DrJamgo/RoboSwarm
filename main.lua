@@ -31,10 +31,19 @@ function love.update(dt)
   Game.body:update(dt)
 end
 
+local fps = 30
+local time = love.timer.getTime()
+
 function love.draw()
   love.graphics.clear(0.1,0.1,0.3,1)
   Game.map:draw(200,0,2,2)
-  love.graphics.replaceTransform(love.math.newTransform(200,0,0,2,2))
+  love.graphics.replaceTransform(love.math.newTransform())
+
+  local diff = love.timer.getTime() - time
+  time = love.timer.getTime()
+  local a = 0.1
+  fps = (1-a) * fps + a * (1/diff)
+  love.graphics.print(string.format('%.1f', fps), love.graphics.getWidth() - 50)
 
   -- DEBUG DRAWING
   local transform = love.math.newTransform(0,0,math.pi/4,200,200)

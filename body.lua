@@ -37,9 +37,9 @@ function Body:initialize(heightmap)
     --
     self.bodiestex = love.graphics.newCanvas(NUM_BODIES, 1)
     self.bodiestex:setFilter('nearest', 'nearest')
-    self:addBody(3,6,1,2)
-    self:addBody(6,6,1,2)
-    self:addBody(9,6,1,3)
+    self:addBody(3,5,3,2)
+    self:addBody(6,6,4,2)
+    self:addBody(9,6,2,3)
     self.mesh = love.graphics.newMesh({{'VertexPosition', 'float', 3}}, vertices, 'fan')
 end
 
@@ -86,8 +86,47 @@ local pixelcode = [[
     }
 ]]
 
-local shader = love.graphics.newShader(pixelcode, vertexcode)
-shader:send('volumetex', volumeimage)
+local volumeshader = love.graphics.newShader(pixelcode, vertexcode)
+volumeshader:send('volumetex', volumeimage)
+
+
+local updatevertexcode = [[
+    vec4 position( mat4 transform_projection, vec4 vertex_position )
+    {
+        return transform_projection * vertex_position;
+    }
+]]
+
+local updatepixelcode = [[
+    uniform float dt;
+    uniform VolumeImage volume;
+    uniform vec3 worldscale;
+
+    vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords )
+    {
+        vec4 Body = Texel(tex, texture_coords);
+        vec3 vector = vec3(0,0,0);
+        int count = 9;
+        for(int z = -1; z <= 1; z+=1) {
+            for(int y = -1; y <= 1; y+=1) {
+                for(int x = -1; x <= 1; x+=1) {
+                    vec3 diff = vec3(x,y,z);
+                    vec3 uvw = Body.xyz + diff / worldscale;
+                    float d = Texel(volume, uvw).a;
+                    vector += diff * d / count;
+                    count++;
+                }
+            }
+        }
+
+        Body.xyz = Body.xyz - vector * dt;
+        Body.z = Body.z - dt * 0.2;
+        Body.x = Body.x + dt * 0.1;
+        return Body;
+    }
+]]
+
+local updateshader = love.graphics.newShader(updatepixelcode, updatevertexcode)
 
 function Body:update(dt)
     love.graphics.replaceTransform(love.math.newTransform())
@@ -100,12 +139,12 @@ function Body:update(dt)
     --
     local volume = self.heightmap.volume
     local depth = volume:getDepth()
-    love.graphics.setShader(shader)
+    love.graphics.setShader(volumeshader)
     love.graphics.setColor(1,1,1,1)
-    shader:send('worldscale', {self.heightmap:getDimensions()})
-    shader:send('bodiestex', self.bodiestex)
+    volumeshader:send('worldscale', {self.heightmap:getDimensions()})
+    volumeshader:send('bodiestex', self.bodiestex)
     for i = 1, depth, 1 do
-        shader:send('uZ', i-1)
+        volumeshader:send('uZ', i-1)
         love.graphics.setCanvas(volume, i)
         love.graphics.drawInstanced(self.mesh, #self.bodies)
     end
@@ -113,8 +152,16 @@ function Body:update(dt)
     --
     -- UPDATE STAGE
     --
+    local newBodiesTex = love.graphics.newCanvas(self.bodiestex:getDimensions())
+    newBodiesTex:setFilter('nearest','nearest')
+    love.graphics.setCanvas(newBodiesTex)
+    love.graphics.setShader(updateshader)
+    updateshader:send('dt', dt)
+    updateshader:send('worldscale', {self.heightmap:getDimensions()})
+    updateshader:send('volume', volume)
+    love.graphics.draw(self.bodiestex)
 
-
+    self.bodiestex = newBodiesTex
 
     --
     -- RESET
