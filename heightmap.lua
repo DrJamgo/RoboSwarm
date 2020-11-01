@@ -49,7 +49,7 @@ function HeightMap:refresh()
     love.graphics.setCanvas()
 end
 
-function HeightMap:draw()
+function HeightMap:drawDebug()
     love.graphics.push()
     --love.graphics.draw(self.image, self.map.width/2, self.map.height/2, math.pi / 4, 1,1,self.map.width/2, self.map.height/2)
     love.graphics.scale(1,1)

@@ -22,7 +22,7 @@ Game = {}
 function love.load()
   Game.map = STI('iso_16x16.lua')
   Game.heightmap = HeightMap(Game.map)
-  Game.body = Body(Game.heightmap)
+  Game.body = Body(Game.map, Game.heightmap)
 end
 
 function love.update(dt)
@@ -37,7 +37,9 @@ local time = love.timer.getTime()
 function love.draw()
   love.graphics.clear(0.1,0.1,0.3,1)
   Game.map:draw(200,0,2,2)
-  love.graphics.replaceTransform(love.math.newTransform())
+  love.graphics.replaceTransform(love.math.newTransform(400,0,0,2,2))
+
+  Game.body:draw()
 
   local diff = love.timer.getTime() - time
   time = love.timer.getTime()
@@ -63,8 +65,8 @@ function love.draw()
     Game.cursor = {transform:inverseTransformPoint(love.mouse.getPosition())}
   end
 
-  Game.heightmap:draw()
-  Game.body:draw()
+  Game.heightmap:drawDebug()
+  Game.body:drawDebug()
 end
 
 function love.keypressed( key, scancode, isrepeat )
