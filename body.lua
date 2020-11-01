@@ -26,7 +26,7 @@ local vertices = {
     {1,1,0},
 }
 
-local NUM_BODIES = 20
+local NUM_BODIES = 1
 local BODIES_TEX_FORMAT = 'rgba16f'
 
 function Body:initialize(map, heightmap)
@@ -38,14 +38,17 @@ function Body:initialize(map, heightmap)
     --    |---|---|---|---|
     --  0 | x | y | z | 1 |
     --
-    self.bodiestex = love.graphics.newCanvas(NUM_BODIES, 1, {format=BODIES_TEX_FORMAT})
+    self.bodiestex = love.graphics.newCanvas(NUM_BODIES, 2, {format=BODIES_TEX_FORMAT})
     self.bodiestex:setFilter('nearest', 'nearest')
     self.mesh = love.graphics.newMesh({{'VertexPosition', 'float', 3}}, vertices, 'fan')
     local wx,wy,wz = self.heightmap:getDimensions()
     self.dynamic = love.graphics.newCanvas(wx,wy,wz, {type='volume'})
 
     for i = 1, NUM_BODIES do
-        self:addBody(math.random(wx-4)+2,math.random(wy-4)+2,math.random(wz-3)+3,2)
+        self:addBody(math.random(wx-4)+2,
+        math.random(wy-4)+2,
+        math.random(wz-3)+3,
+        1)
     end
 
 end
@@ -59,8 +62,10 @@ function Body:addBody(x,y,z,r)
     local i = #self.bodies
     local u,v = self:_indexToUV(#self.bodies)
     self.bodiestex:renderTo(function()
-        love.graphics.setColor(x/wx,y/wy,z/wz, 1)
-        love.graphics.points(i,0.5)
+        love.graphics.setColor(x/wx,y/wy,z/wz)
+        love.graphics.points(i,1)
+        love.graphics.setColor(r/wz,0,0)
+        love.graphics.points(i,2)
     end)
     table.insert(self.bodies, {u})
 end
@@ -74,8 +79,9 @@ local vertexcode = [[
 
     vec4 position( mat4 transform_projection, vec4 vertex_position )
     {
-        vec4 Body = vec4(Texel(bodiestex, vec2(Index,0)).xyz * worldscale, 1.5);
-        vec3 pos = (vec3(vertex_position.xy, uZ) * Body.w) + vec3(Body.xy, Body.z);
+        vec4 Body = Texel(bodiestex, vec2(Index,0.25)) * vec4(worldscale,1);
+        vec4 Params = Texel(bodiestex, vec2(Index,0.75));
+        vec3 pos = (vec3(vertex_position.xy, uZ) * Params.r * worldscale.z) + vec3(Body.xy, Body.z);
         vTexCoord = vec3(vertex_position.xy / 2.1, (uZ-Body.z)/(Body.w*0.9)) + vec3(0.5,0.5,0.5);
         return transform_projection * vec4(pos, 1);
     }
@@ -113,39 +119,47 @@ local updatepixelcode = [[
 
     vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords )
     {
-        vec4 Body = Texel(tex, texture_coords);
-        vec3 vector = vec3(0,0,0);
-        int count = 0;
-        float R = 0.5;
-        for(int z = -1; z <= 1; z+=1) {
-            for(int y = -1; y <= 1; y+=1) {
-                for(int x = -1; x <= 1; x+=1) {
-                    if(x != 0 && y != 0 && z <= 0) {
-                        vec3 diff = vec3(x,y,z) * R;
-                        vec3 uvw = Body.xyz + diff / worldscale;
-                        float s = Texel(staticVolume, uvw).a;
-                        float d = Texel(dynamicVolume, uvw).a;
-                        vector += diff * (s+d) / (length(diff) / R);
-                        count++;
+        vec4 Body = Texel(tex, vec2(texture_coords.x, 0.25));
+        vec4 Params = Texel(tex, vec2(texture_coords.x, 0.75));
+
+        if(texture_coords.y < 0.5) {
+            vec3 vector = vec3(0,0,0);
+            float count = 0;
+            float R = worldscale.z * Params.r * 0.5;
+            for(int z = -1; z <= 1; z+=1) {
+                for(int y = -1; y <= 1; y+=1) {
+                    for(int x = -1; x <= 1; x+=1) {
+                        if(x != 0 && y != 0 && z <= 0) {
+                            vec3 diff = vec3(x,y,z) * R;
+                            vec3 uvw = Body.xyz + diff / worldscale;
+                            float s = Texel(staticVolume, uvw).a;
+                            float d = Texel(dynamicVolume, uvw).a;
+                            float f = (length(diff) / R);
+                            vector += diff * (s+d) * f;
+                            count += f;
+                        }
                     }
                 }
             }
-        }
-        vector = vector / float(count);
-        // adjust z factor
-        vector.z *= 2;
+            vector = vector / count;
+            // adjust z factor
+            vector.z *= 2;
 
-        float c = 0.2;
-        vec3 target = cursor.xyz;
-        vec3 diff = target - Body.xyz;
-        float f = dot(diff, -vector);
-        if(f > -0.1) {
-            Body.xyz += clamp(cursor.a * diff , vec3(-c,-c,-c), vec3(c,c,c)) * dt;
+            float c = 0.2;
+            vec3 target = cursor.xyz / worldscale;
+            vec3 diff = target - Body.xyz;
+            float f = dot(diff, -vector);
+            if(f > -0.1) {
+                Body.xyz += clamp(cursor.a * diff , vec3(-c,-c,-c), vec3(c,c,c)) * dt;
+            }
+            Body.xyz += - vector * dt * 10;
+            Body.z = Body.z - dt * 10 / worldscale.z;
+            Body.xyz = clamp(Body.xyz, vec3(0,0,0), vec3(1,1,1));
+            return Body;
         }
-        Body.xyz += - vector * dt * 50;
-        Body.z = Body.z - dt * 10 / worldscale.z;
-        Body.xyz = clamp(Body.xyz, vec3(0,0,0), vec3(1,1,1));
-        return Body;
+        else {
+            return Params;
+        }
     }
 ]]
 
@@ -179,6 +193,7 @@ function Body:update(dt)
     newBodiesTex:setFilter('nearest','nearest')
     love.graphics.setCanvas(newBodiesTex)
     love.graphics.setShader(updateshader)
+    love.graphics.setBlendMode('replace', 'premultiplied')
     updateshader:send('dt', dt)
     updateshader:send('worldscale', {self.heightmap:getDimensions()})
     updateshader:send('staticVolume', self.heightmap.volume)
@@ -194,6 +209,7 @@ function Body:update(dt)
     love.graphics.setColor(1,1,1,1)
     love.graphics.setShader()
     love.graphics.setCanvas()
+    love.graphics.setBlendMode('alpha')
 end
 
 function Body:drawDebug()
@@ -202,7 +218,7 @@ function Body:drawDebug()
     love.graphics.draw(self.bodiestex,0,0,0,10,10)
     love.graphics.pop()
     self:renderVolume(self.dynamic)
-    self:renderVolume(volumeimage,1,1)
+    --self:renderVolume(volumeimage,1,1)
 end
 
 local image = love.graphics.newImage('iso_16x24.png')
@@ -216,12 +232,14 @@ function Body:draw()
 
     for i=0,#self.bodies-1 do
         local x,y,z = data:getPixel(i,0)
+        local r = data:getPixel(i,1) 
         local wx,wy,wz = self.heightmap:getDimensions()
         local X, Y = self.map:convertTileToPixel(x*wx, y*wy)
         local frame = math.floor((i/0.1 + Game.time * 10) % 2) +1
-        love.graphics.draw(image, quads[frame], X, Y-z*16, 0, 1, 1, 8,16)
+        love.graphics.draw(image, quads[frame], X, Y-z*16, 0, r*wz, r*wz, 8,16)
+        love.graphics.print(string.format('%d|%d|%d',x*wx,y*wy,z*wz), X, Y-z*16, 0, 0.5)
         --love.graphics.circle('line', X, Y, 5)
-        love.graphics.line(X,Y,X, Y-z*16)
+        --love.graphics.line(X,Y,X, Y-z*16)
     end
 end
 

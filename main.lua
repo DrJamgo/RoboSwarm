@@ -40,8 +40,12 @@ local time = love.timer.getTime()
 function love.draw()
   love.graphics.clear(0.1,0.1,0.3,1)
   Game.map:draw(200,0,2,2)
-  love.graphics.replaceTransform(love.math.newTransform(400,0,0,2,2))
-
+  local maptransform = love.math.newTransform(400,0,0,2,2)
+  love.graphics.replaceTransform(maptransform)
+  Game.cursor = nil
+  if love.mouse.isDown(1) then
+    Game.cursor = {Game.map:convertPixelToTile(maptransform:inverseTransformPoint(love.mouse.getPosition()))}
+  end
   Game.body:draw()
 
   love.graphics.replaceTransform(love.math.newTransform())
@@ -65,11 +69,6 @@ function love.draw()
   matrix[7] = -100
   transform:setMatrix(unpack(matrix))
   love.graphics.replaceTransform(transform)
-  Game.cursor = nil
-  if love.mouse.isDown(1) then
-    Game.cursor = {transform:inverseTransformPoint(love.mouse.getPosition())}
-  end
-
   Game.heightmap:drawDebug()
   Game.body:drawDebug()
 end

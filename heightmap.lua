@@ -19,7 +19,7 @@ end
 function HeightMap:refresh()
     local map = self.map
 
-    self.volume = self.volume or love.graphics.newCanvas(map.width, map.height, 8, {type='volume'})
+    self.volume = self.volume or love.graphics.newCanvas(map.width, map.height, 16, {type='volume'})
     --self.volume:setFilter('nearest', 'nearest')
     self.volume:setWrap('clamp')
     
