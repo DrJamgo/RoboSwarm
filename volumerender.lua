@@ -43,7 +43,7 @@ function VolumeRender:renderVolume(volumeimage, x, y)
     love.graphics.setShader(debugshader)
     debugshader:send('volumetex', volumeimage)
     local depth = volumeimage:getDepth()
-    local step = 1
+    local step = 0.3
     love.graphics.setColor(1,1,1,math.pow(step, step))
     for i = 1, depth, step do
         debugshader:send('slice', (i-1) / (depth-1))
