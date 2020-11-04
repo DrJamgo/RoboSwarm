@@ -129,7 +129,7 @@ local updatepixelcode = [[
             for(int z = -1; z <= 1; z+=1) {
                 for(int y = -1; y <= 1; y+=1) {
                     for(int x = -1; x <= 1; x+=1) {
-                        if(x != 0 && y != 0 && z <= 0) {
+                        if((x != 0 && y != 0 && z <= 0)) {
                             vec3 diff = vec3(x,y,z) * R;
                             vec3 uvw = Body.xyz + diff / worldscale;
                             float s = Texel(staticVolume, uvw).a;
@@ -151,6 +151,11 @@ local updatepixelcode = [[
             float f = dot(diff, -vector);
             if(f > -0.1) {
                 Body.xyz += clamp(cursor.a * diff , vec3(-c,-c,-c), vec3(c,c,c)) * dt;
+                float z1 = Texel(staticVolume, Body.xyz + vec3(normalize(diff.xy),0.5)/ worldscale*R).a;
+                float z0 = Texel(staticVolume, Body.xyz + vec3(normalize(diff.xy),-0.5)/ worldscale*R).a;
+                if(z1 < z0 / 2) {
+                    Body.z = Body.z + dt * 20 / worldscale.z;
+                }
             }
             Body.xyz += - vector * dt * 10;
             Body.z = Body.z - dt * 10 / worldscale.z;
