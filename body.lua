@@ -26,7 +26,7 @@ local vertices = {
     {1,1,0},
 }
 
-local NUM_BODIES = 1
+local NUM_BODIES = 10
 local BODIES_TEX_FORMAT = 'rgba16f'
 
 function Body:initialize(map, heightmap)
@@ -125,7 +125,7 @@ local updatepixelcode = [[
         if(texture_coords.y < 0.5) {
             vec3 vector = vec3(0,0,0);
             float count = 0;
-            float R = worldscale.z * Params.r * 0.5;
+            float R = worldscale.z * Params.r * 0.25;
             for(int z = -1; z <= 1; z+=1) {
                 for(int y = -1; y <= 1; y+=1) {
                     for(int x = -1; x <= 1; x+=1) {
@@ -150,14 +150,18 @@ local updatepixelcode = [[
             vec3 diff = target - Body.xyz;
             float f = dot(diff, -vector);
             if(f > -0.1) {
-                Body.xyz += clamp(cursor.a * diff , vec3(-c,-c,-c), vec3(c,c,c)) * dt;
-                float z1 = Texel(staticVolume, Body.xyz + vec3(normalize(diff.xy),0.5)/ worldscale*R).a;
-                float z0 = Texel(staticVolume, Body.xyz + vec3(normalize(diff.xy),-0.5)/ worldscale*R).a;
-                if(z1 < z0 / 2) {
+                vec3 probe0 = Body.xyz + vec3(normalize(diff.xy),-0.5) / worldscale * R;
+                vec3 probe1 = Body.xyz + vec3(normalize(diff.xy), 1.0) / worldscale * R;
+                float z1 = Texel(staticVolume, probe1).a;
+                float z0 = Texel(staticVolume, probe0).a;
+                if(z1 < z0) {
                     Body.z = Body.z + dt * 20 / worldscale.z;
                 }
+                else {
+                    Body.xyz += clamp(cursor.a * normalize(diff), vec3(-c,-c,-c), vec3(c,c,c)) * dt;
+                }
             }
-            Body.xyz += - vector * dt * 10;
+            Body.xyz += - vector * dt * 25;
             Body.z = Body.z - dt * 10 / worldscale.z;
             Body.xyz = clamp(Body.xyz, vec3(0,0,0), vec3(1,1,1));
             return Body;
@@ -237,12 +241,12 @@ function Body:draw()
 
     for i=0,#self.bodies-1 do
         local x,y,z = data:getPixel(i,0)
-        local r = data:getPixel(i,1) 
+        local d = data:getPixel(i,1) 
         local wx,wy,wz = self.heightmap:getDimensions()
         local X, Y = self.map:convertTileToPixel(x*wx, y*wy)
         local frame = math.floor((i/0.1 + Game.time * 10) % 2) +1
-        love.graphics.draw(image, quads[frame], X, Y-z*16, 0, r*wz, r*wz, 8,16)
-        love.graphics.print(string.format('%d|%d|%d',x*wx,y*wy,z*wz), X, Y-z*16, 0, 0.5)
+        love.graphics.draw(image, quads[frame], X, Y-z*16, 0, d*wz, d*wz, 8,16)
+        --love.graphics.print(string.format('%d|%d|%d',x*wx,y*wy,z*wz), X, Y-z*16, 0, 0.5)
         --love.graphics.circle('line', X, Y, 5)
         --love.graphics.line(X,Y,X, Y-z*16)
     end

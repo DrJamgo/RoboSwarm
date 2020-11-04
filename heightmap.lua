@@ -25,22 +25,35 @@ function HeightMap:refresh()
     
     love.graphics.replaceTransform(love.math.newTransform())
     local maxz = 0
-    for _,layer in ipairs(map.layers) do
-        local imagedata = love.image.newImageData(map.width, map.height)
+    for i,layer in ipairs(map.layers) do
+        local imagedataH = love.image.newImageData(map.width, map.height)
+        local imagedataF = love.image.newImageData(map.width, map.height)
         for y, row in pairs(layer.data) do
             for x, tileinstance in pairs(row) do
                 local type = tileinstance.type
-                local h = ((layer.properties.z or 0) + (((type == 'full') and 1) or ((type == 'half' and 0.5)) or 0))
-                local z = h * scale[3]
-                imagedata:setPixel(x-1,y-1,z,z,z,1)
+                local h = (((type == 'full') and 1) or ((type == 'half' and 0.5)) or 0)
+                local z = ((layer.properties.z or 0) + h) * scale[3]
+                if h > 0.0 then
+                    imagedataH:setPixel(x-1,y-1,1,1,1,1)
+                end
+                if h > 0.5 then
+                    imagedataF:setPixel(x-1,y-1,1,1,1,1)
+                end
             end
         end
-        local image = love.graphics.newImage(imagedata)
-        image:setFilter('nearest', 'nearest')
-        maxz = math.max(maxz, _)
-        love.graphics.setCanvas(self.volume, _)
+        local imageH = love.graphics.newImage(imagedataH)
+        imageH:setFilter('nearest', 'nearest')
+        love.graphics.setCanvas(self.volume, i*2)
         love.graphics.clear(0,0,0,0)
-        love.graphics.draw(image)
+        love.graphics.draw(imageH)
+
+        local imageF = love.graphics.newImage(imagedataF)
+        imageF:setFilter('nearest', 'nearest')
+        love.graphics.setCanvas(self.volume, i*2+1)
+        love.graphics.clear(0,0,0,0)
+        love.graphics.draw(imageF)
+
+        maxz = math.max(maxz, i*2)
     end
 
     for i=maxz+1, self.volume:getDepth() do
