@@ -13,7 +13,7 @@ function HeightMap:update(dt)
 end
 
 function HeightMap:getDimensions()
-    return self.volume:getWidth(), self.volume:getHeight(), self.volume:getDepth()
+    return self.volume:getWidth(), self.volume:getHeight(), self.volume:getDepth() / 2
 end
 
 function HeightMap:refresh()

@@ -39,13 +39,31 @@ local time = love.timer.getTime()
 
 function love.draw()
   love.graphics.clear(0.1,0.1,0.3,1)
-  Game.map:draw(200,0,2,2)
-  local maptransform = love.math.newTransform(400,0,0,2,2)
+  Game.map:draw(100,0,1,1)
+  local maptransform = love.math.newTransform(200,0,0,1,1)
   love.graphics.replaceTransform(maptransform)
   Game.cursor = nil
   if love.mouse.isDown(1) then
     Game.cursor = {Game.map:convertPixelToTile(maptransform:inverseTransformPoint(love.mouse.getPosition()))}
   end
+
+  local isoTransform = maptransform:clone()
+  
+  --isoTransform:rotate(math.pi/4)
+  isoTransform:shear(-1,1)
+  isoTransform:scale(8,8)
+  isoTransform:translate(12,-12)
+  
+  
+  local isoMatrix = {isoTransform:getMatrix()}
+  --isoMatrix[4] = isoMatrix[4] + 400
+  --isoMatrix[8] = isoMatrix[8] + 100
+  --isoMatrix[6] = isoMatrix[6] * 4
+  --isoMatrix[5] = isoMatrix[5] * 4
+  isoMatrix[7] = -4
+  isoTransform:setMatrix(unpack(isoMatrix))
+
+  love.graphics.replaceTransform(isoTransform)
   Game.body:draw()
 
   love.graphics.replaceTransform(love.math.newTransform())
@@ -74,5 +92,5 @@ function love.draw()
 end
 
 function love.keypressed( key, scancode, isrepeat )
-  Game.count[key] = (Game.count[key] or 0) + 1
+  --Game.count[key] = (Game.count[key] or 0) + 1
 end
