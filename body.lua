@@ -8,7 +8,7 @@ for z=0,R-1 do
     for y = 0,R-1 do
         for x = 0,R-1 do
             local dist = math.sqrt(math.pow(x-M,2) + math.pow(y-M,2))
-            local a = 1 - math.pow(dist/M, 10)
+            local a = 1 - math.pow(dist/M, 5)
             slice:setPixel(x,y,1,1,1,a+0.1)
         end
     end
@@ -26,7 +26,7 @@ local vertices = {
     {1,1,0},
 }
 
-local NUM_BODIES = 1000
+local NUM_BODIES = 400
 local BODIES_TEX_FORMAT = 'rgba16f'
 
 function Body:initialize(map, heightmap)
@@ -127,7 +127,7 @@ local updatepixelcode = [[
         if(texture_coords.y < 0.5) {
             vec3 vector = vec3(0,0,0);
             float count = 0;
-            float R = worldscale.z * Params.r * 0.25;
+            float R = worldscale.z * Params.r * 0.5;
             for(int z = -1; z <= 1; z+=1) {
                 for(int y = -1; y <= 1; y+=1) {
                     for(int x = -1; x <= 1; x+=1) {
@@ -152,21 +152,18 @@ local updatepixelcode = [[
             vec3 diff = target - Body.xyz;
             float f = dot(diff, -vector);
 
-            if(f > -0.1) {
-                vec3 probe0 = Body.xyz + vec3(normalize(diff.xy), 0.0) / worldscale * R;
-                vec3 probe1 = Body.xyz + vec3(normalize(diff.xy), 1.0) / worldscale * R;
-                float z1 = Texel(staticVolume, probe1).a;
-                float z0 = Texel(staticVolume, probe0).a;
-                if(z1 < z0) {
-                    Body.z = Body.z + dt * 15 / worldscale.z;
-                }
-                else {
-                    Body.xyz += clamp(cursor.a * normalize(diff), vec3(-c,-c,-c), vec3(c,c,c)) * dt;
-                }
+            vec3 probe0 = Body.xyz + vec3(normalize(diff.xy), 0.0) / worldscale * R;
+            vec3 probe1 = Body.xyz + vec3(normalize(diff.xy), 1.0) / worldscale * R;
+            float z1 = Texel(staticVolume, probe1).a;
+            float z0 = Texel(staticVolume, probe0).a;
+            if(z1 < z0) {
+                Body.z = Body.z + dt * 20 / worldscale.z;
             }
             
-            Body.xyz += - vector * dt * 25; // <- repulsion
-            Body.z = Body.z - dt * 10 / worldscale.z;
+            Body.xyz += clamp(cursor.a * normalize(diff), vec3(-c,-c,-c), vec3(c,c,c)) * dt;
+        
+            Body.xyz += - vector * dt * 12; // <- repulsion
+            Body.z = Body.z - dt * 5 / worldscale.z; // <- gravity
             Body.xyz = clamp(Body.xyz, vec3(0,0,0), vec3(1,1,1));
             return Body;
         }
