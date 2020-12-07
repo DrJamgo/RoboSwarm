@@ -26,7 +26,7 @@ local vertices = {
     {1,1,0},
 }
 
-local NUM_BODIES = 200
+local NUM_BODIES = 1000
 local BODIES_TEX_FORMAT = 'rgba16f'
 
 function Body:initialize(map, heightmap)
@@ -39,7 +39,7 @@ function Body:initialize(map, heightmap)
     --  0 | x | y | z | 1 |
     --
     self.bodiestex = love.graphics.newCanvas(NUM_BODIES, 2, {format=BODIES_TEX_FORMAT})
-    --self.bodiestex:setFilter('nearest', 'nearest')
+    self.bodiestex:setFilter('nearest', 'nearest')
     self.mesh = love.graphics.newMesh({{'VertexPosition', 'float', 3}}, vertices, 'fan')
     local wx,wy,wz = self.heightmap:getDimensions()
     self.dynamic = love.graphics.newCanvas(wx,wy,wz, {type='volume'})
@@ -152,7 +152,7 @@ local updatepixelcode = [[
             vec3 diff = target - Body.xyz;
             float f = dot(diff, -vector);
 
-            //if(f > -0.1) {
+            if(f > -0.1) {
                 vec3 probe0 = Body.xyz + vec3(normalize(diff.xy), 0.0) / worldscale * R;
                 vec3 probe1 = Body.xyz + vec3(normalize(diff.xy), 1.0) / worldscale * R;
                 float z1 = Texel(staticVolume, probe1).a;
@@ -163,9 +163,9 @@ local updatepixelcode = [[
                 else {
                     Body.xyz += clamp(cursor.a * normalize(diff), vec3(-c,-c,-c), vec3(c,c,c)) * dt;
                 }
-            //}
+            }
             
-            Body.xyz += - vector * dt * 50; // <- repulsion
+            Body.xyz += - vector * dt * 25; // <- repulsion
             Body.z = Body.z - dt * 10 / worldscale.z;
             Body.xyz = clamp(Body.xyz, vec3(0,0,0), vec3(1,1,1));
             return Body;
